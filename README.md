@@ -17,8 +17,10 @@
 Код коммитаем в **reports/<Ваша_фамилия>/<Номер_лабораторной_работы>/src**
 
 **Журналы:**
+
 1 подгруппа:
 https://docs.google.com/spreadsheets/d/1vikfJ3g_HyaLNlQta6E878HmUgnuovPZ6qH8woBC6tQ/edit?usp=sharing
+
 2 подгруппа:
 https://docs.google.com/spreadsheets/d/1SwXPTL5KSrl8CIM_w_vamgsxUOwmQXA6oqQkh2b_598/edit?usp=sharing
 
