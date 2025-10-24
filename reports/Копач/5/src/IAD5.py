@@ -14,34 +14,23 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-print("=" * 60)
-print("ПЕРЕЗАПУСК АНАЛИЗА С УЧЕТОМ РАЗМЕРА ДАТАСЕТА")
-print("=" * 60)
-
-# 1. Загрузка и проверка данных
 df = pd.read_csv('Telco-Customer-Churn.csv')
 print(f"Размер данных: {df.shape[0]} строк, {df.shape[1]} столбцов")
 print(f"Объем данных: {df.shape[0] - 1} клиентов + 1 заголовок")
 
-# 2. Более тщательная предобработка
-# Обработка TotalCharges
+
 df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
 print(f"Пропуски в TotalCharges: {df['TotalCharges'].isnull().sum()}")
 
-# Анализ пропусков
 missing_data = df[df['TotalCharges'].isnull()]
 print(f"Клиенты с пропусками в TotalCharges:")
 print(f"  - Tenure: {missing_data['tenure'].unique()}")
 print(f"  - MonthlyCharges: {missing_data['MonthlyCharges'].unique()}")
 
-# Заполняем пропуски 0 (новые клиенты)
 df['TotalCharges'].fillna(0, inplace=True)
 
-# Удаляем customerID
 df = df.drop('customerID', axis=1)
 
-# 3. Расширенный feature engineering
-# Создаем новые признаки
 df['TenureGroup'] = pd.cut(df['tenure'],
                            bins=[0, 12, 24, 36, 48, 60, 72],
                            labels=['0-1y', '1-2y', '2-3y', '3-4y', '4-5y', '5-6y'])
@@ -52,32 +41,26 @@ df['ChargeRatio'].fillna(0, inplace=True)
 
 df['AvgMonthlyCharge'] = df['TotalCharges'] / (df['tenure'] + 1)
 
-# 4. Кодирование признаков
 le_target = LabelEncoder()
 df['Churn'] = le_target.fit_transform(df['Churn'])
 
-# Разделяем признаки
 numeric_features = ['SeniorCitizen', 'tenure', 'MonthlyCharges', 'TotalCharges',
                     'ChargeRatio', 'AvgMonthlyCharge']
 categorical_features = [col for col in df.columns if col not in numeric_features + ['Churn', 'TenureGroup']]
 
-# Кодируем категориальные признаки
 label_encoders = {}
 for col in categorical_features:
     le = LabelEncoder()
     df[col] = le.fit_transform(df[col].astype(str))
     label_encoders[col] = le
 
-# Кодируем TenureGroup
 df['TenureGroup'] = LabelEncoder().fit_transform(df['TenureGroup'])
 
-# 5. Анализ дисбаланса классов
 print(f"\nРАСПРЕДЕЛЕНИЕ КЛАССОВ:")
 churn_counts = df['Churn'].value_counts()
 print(f"Не отток (0): {churn_counts[0]} ({churn_counts[0] / len(df) * 100:.1f}%)")
 print(f"Отток (1): {churn_counts[1]} ({churn_counts[1] / len(df) * 100:.1f}%)")
 
-# 6. Разделение данных
 X = df.drop('Churn', axis=1)
 y = df['Churn']
 
@@ -89,7 +72,6 @@ print(f"\nРАЗДЕЛЕНИЕ ДАННЫХ:")
 print(f"Обучающая выборка: {X_train.shape[0]} клиентов")
 print(f"Тестовая выборка: {X_test.shape[0]} клиентов")
 
-# 7. Масштабирование
 scaler = StandardScaler()
 X_train_scaled = X_train.copy()
 X_test_scaled = X_test.copy()
@@ -97,7 +79,6 @@ X_test_scaled = X_test.copy()
 X_train_scaled[numeric_features] = scaler.fit_transform(X_train[numeric_features])
 X_test_scaled[numeric_features] = scaler.transform(X_test[numeric_features])
 
-# 8. Расширенное обучение моделей с настройкой гиперпараметров
 models = {
     'Decision Tree': DecisionTreeClassifier(random_state=42),
     'Random Forest': RandomForestClassifier(random_state=42),
@@ -106,7 +87,6 @@ models = {
     'CatBoost': CatBoostClassifier(random_state=42, verbose=False)
 }
 
-# Параметры для GridSearch
 param_grids = {
     'Decision Tree': {
         'max_depth': [3, 5, 7, 10],
@@ -134,7 +114,6 @@ for name, model in models.items():
     print(f"\n--- {name} ---")
 
     if name in param_grids:
-        # Используем GridSearch для настройки
         grid_search = GridSearchCV(model, param_grids[name], cv=5, scoring='f1', n_jobs=-1)
 
         if name in ['XGBoost', 'CatBoost']:
@@ -151,7 +130,6 @@ for name, model in models.items():
         print(f"  Лучшие параметры: {grid_search.best_params_}")
 
     else:
-        # Без GridSearch
         if name in ['XGBoost', 'CatBoost']:
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
@@ -172,7 +150,6 @@ for name, model in models.items():
 
     print(f"  F1-score: {f1:.4f}")
 
-# 9. Сравнение моделей
 print("\n" + "=" * 50)
 print("ИТОГОВОЕ СРАВНЕНИЕ МОДЕЛЕЙ")
 print("=" * 50)
@@ -183,7 +160,6 @@ print("\nФИНАЛЬНЫЙ РЕЙТИНГ:")
 for i, (name, result) in enumerate(sorted_results, 1):
     print(f"{i}. {name}: F1-score = {result['f1_score']:.4f}")
 
-# 10. Детальный анализ лучшей модели
 best_model_name, best_result = sorted_results[0]
 print(f"\nДЕТАЛЬНЫЙ АНАЛИЗ ЛУЧШЕЙ МОДЕЛИ: {best_model_name}")
 
@@ -194,10 +170,8 @@ else:
     y_pred_best = best_result['model'].predict(X_test_scaled)
     print(classification_report(y_test, y_pred_best))
 
-# 11. Визуализация результатов
 plt.figure(figsize=(15, 10))
 
-# График 1: Сравнение F1-score
 plt.subplot(2, 3, 1)
 model_names = list(results.keys())
 f1_scores = [result['f1_score'] for result in results.values()]
@@ -212,7 +186,6 @@ for bar, score in zip(bars, f1_scores):
     plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
              f'{score:.4f}', ha='center', va='bottom', fontweight='bold')
 
-# График 2: Важность признаков лучшей модели
 plt.subplot(2, 3, 2)
 if hasattr(best_result['model'], 'feature_importances_'):
     feature_importance = best_result['model'].feature_importances_
@@ -224,7 +197,6 @@ if hasattr(best_result['model'], 'feature_importances_'):
     sns.barplot(data=feature_importance_df, x='importance', y='feature', palette='viridis')
     plt.title(f'Важные признаки ({best_model_name})', fontsize=12, fontweight='bold')
 
-# График 3: Матрица ошибок лучшей модели
 plt.subplot(2, 3, 3)
 cm = confusion_matrix(y_test, y_pred_best)
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
@@ -232,7 +204,6 @@ plt.title('Матрица ошибок лучшей модели', fontsize=12, 
 plt.xlabel('Предсказано')
 plt.ylabel('Фактически')
 
-# График 4: Precision-Recall curve
 plt.subplot(2, 3, 4)
 for name, result in results.items():
     precision, recall, _ = precision_recall_curve(y_test, result['y_pred_proba'])
@@ -244,14 +215,12 @@ plt.ylabel('Precision')
 plt.title('Precision-Recall кривые', fontsize=12, fontweight='bold')
 plt.legend()
 
-# График 5: Распределение оттока
 plt.subplot(2, 3, 5)
 churn_dist = df['Churn'].value_counts()
 plt.pie(churn_dist, labels=['Не отток', 'Отток'], autopct='%1.1f%%',
         colors=['lightblue', 'lightcoral'], startangle=90)
 plt.title('Распределение оттока клиентов', fontsize=12, fontweight='bold')
 
-# График 6: Топ-5 коррелирующих признаков
 plt.subplot(2, 3, 6)
 correlations = df.corr()['Churn'].drop('Churn').sort_values(ascending=False).head(5)
 sns.barplot(x=correlations.values, y=correlations.index, palette='coolwarm')
@@ -261,7 +230,6 @@ plt.xlabel('Корреляция')
 plt.tight_layout()
 plt.show()
 
-# 12. Бизнес-рекомендации на основе анализа 7043 клиентов
 print("\n" + "=" * 60)
 print("БИЗНЕС-РЕКОМЕНДАЦИИ НА ОСНОВЕ АНАЛИЗА 7043 КЛИЕНТОВ")
 print("=" * 60)
@@ -269,39 +237,36 @@ print("=" * 60)
 total_customers = len(df)
 churn_rate = churn_counts[1] / total_customers * 100
 
-print(f"📊 ОБЩАЯ СТАТИСТИКА:")
+print(f" ОБЩАЯ СТАТИСТИКА:")
 print(f"   • Всего клиентов: {total_customers}")
 print(f"   • Уровень оттока: {churn_rate:.1f}%")
 print(f"   • Клиентов с риском оттока: {churn_counts[1]}")
 
-print(f"\n🎯 ЭФФЕКТИВНОСТЬ МОДЕЛЕЙ:")
+print(f"\n ЭФФЕКТИВНОСТЬ МОДЕЛЕЙ:")
 print(f"   • Лучшая модель: {best_model_name} (F1-score: {best_result['f1_score']:.4f})")
 print(f"   • Может идентифицировать ~{best_result['f1_score'] * 100:.1f}% оттоков")
 
-print(f"\n💡 РЕКОМЕНДАЦИИ:")
+print(f"\n РЕКОМЕНДАЦИИ:")
 print(f"   ✓ Фокус на {best_model_name} для прогнозирования оттока")
 print(f"   ✓ Внедрить систему раннего предупреждения")
 print(f"   ✓ Персонализировать удержание для {churn_counts[1]} клиентов группы риска")
 print(f"   ✓ Мониторить ключевые метрики (тенура, тип контракта, платежи)")
 print(f"   ✓ A/B тестирование стратегий удержания")
 
-print(f"\n📈 ПОТЕНЦИАЛЬНЫЙ ЭФФЕКТ:")
-potential_savings = churn_counts[1] * 50  # Предполагаемая стоимость привлечения нового клиента
+print(f"\n ПОТЕНЦИАЛЬНЫЙ ЭФФЕКТ:")
+potential_savings = churn_counts[1] * 50
 print(f"   • Потенциальная экономия: ${potential_savings:,.0f} (при стоимости привлечения $50/клиент)")
 
-# 13. Анализ прогнозов для бизнес-кейсов
 print(f"\n" + "=" * 50)
 print("ПРАКТИЧЕСКОЕ ПРИМЕНЕНИЕ")
 print("=" * 50)
 
-# Клиенты с высокой вероятностью оттока
 high_risk_threshold = 0.7
 high_risk_indices = np.where(best_result['y_pred_proba'] > high_risk_threshold)[0]
 
 print(f"Клиенты с высокой вероятностью оттока (>70%): {len(high_risk_indices)}")
 print(f"Из них действительно уйдут: {sum(y_test.iloc[high_risk_indices] == 1)}")
 
-# Пример прогнозов
 sample_predictions = pd.DataFrame({
     'Вероятность_оттока': best_result['y_pred_proba'][:10],
     'Прогноз': ['Высокий риск' if x > 0.7 else 'Средний риск' if x > 0.3 else 'Низкий риск' for x in
